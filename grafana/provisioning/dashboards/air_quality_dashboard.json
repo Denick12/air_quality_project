@@ -1,0 +1,181 @@
+{
+  "id": null,
+  "uid": "air-quality",
+  "title": "Air Quality Dashboard",
+  "tags": ["air quality", "ETL", "Kafka", "Airflow"],
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 2,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "European AQI (Latest)",
+      "datasource": "Postgres_AirQuality",
+      "targets": [
+        {
+          "rawSql": "SELECT location, pm2_5 AS value, current_time AS time FROM public.air_quality WHERE current_time = (SELECT MAX(current_time) FROM public.air_quality)",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 50 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 4 }
+    },
+    {
+      "type": "stat",
+      "title": "US AQI (Latest)",
+      "datasource": "Postgres_AirQuality",
+      "targets": [
+        {
+          "rawSql": "SELECT location, pm10 AS value, current_time AS time FROM public.air_quality WHERE current_time = (SELECT MAX(current_time) FROM public.air_quality)",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 50 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 4 }
+    },
+    {
+      "type": "timeseries",
+      "title": "PM2.5 Levels",
+      "targets": [
+        {
+          "rawSql": "SELECT current_time AS time, pm2_5 AS value FROM public.air_quality ORDER BY current_time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "µg/m³" } },
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 6 }
+    },
+    {
+      "type": "timeseries",
+      "title": "PM10 Levels",
+      "targets": [
+        {
+          "rawSql": "SELECT current_time AS time, pm10 AS value FROM public.air_quality ORDER BY current_time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "µg/m³" } },
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 6 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ozone (O₃)",
+      "targets": [
+        {
+          "rawSql": "SELECT current_time AS time, ozone AS value FROM public.air_quality ORDER BY current_time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "µg/m³" } },
+      "gridPos": { "x": 0, "y": 10, "w": 12, "h": 6 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Carbon Monoxide (CO)",
+      "targets": [
+        {
+          "rawSql": "SELECT current_time AS time, carbon_monoxide AS value FROM public.air_quality ORDER BY current_time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "mg/m³" } },
+      "gridPos": { "x": 12, "y": 10, "w": 12, "h": 6 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Nitrogen Dioxide (NO₂)",
+      "targets": [
+        {
+          "rawSql": "SELECT current_time AS time, nitrogen_dioxide AS value FROM public.air_quality ORDER BY current_time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "µg/m³" } },
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 6 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Sulphur Dioxide (SO₂)",
+      "targets": [
+        {
+          "rawSql": "SELECT current_time AS time, sulphur_dioxide AS value FROM public.air_quality ORDER BY current_time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "µg/m³" } },
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 6 }
+    },
+    {
+      "type": "timeseries",
+      "title": "UV Index",
+      "targets": [
+        {
+          "rawSql": "SELECT current_time AS time, uv_index AS value FROM public.air_quality ORDER BY current_time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "none" } },
+      "gridPos": { "x": 0, "y": 22, "w": 24, "h": 6 }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "location",
+        "datasource": "Postgres_AirQuality",
+        "refresh": 1,
+        "query": "SELECT DISTINCT location FROM public.air_quality ORDER BY location",
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  }
+}

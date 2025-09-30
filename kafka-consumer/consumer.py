@@ -25,4 +25,4 @@ while True:
         last_id = record["id"]
 
     producer.flush()
-    time.sleep(60)  # poll every minute
+    time.sleep(60)  # pulls every minute
