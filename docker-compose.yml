@@ -1,107 +1,115 @@
 version: "3.9"
 
 services:
-  # -------------------------
-  # POSTGRES
-  # -------------------------
+  # ======================
+  # PostgreSQL for Airflow
+  # ======================
   postgres_air:
     image: postgres:15
     container_name: postgres_air
-    restart: always
-    ports:
-      - "5433:5432"   # expose Postgres locally on 5433
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: air_quality
-    volumes:
-      - postgres_data_air:/var/lib/postgresql/data
+      POSTGRES_DB: airflow
+    ports:
+      - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U airflow -d air_quality"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - postgres_air_data:/var/lib/postgresql/data
 
-  # -------------------------
-  # ZOOKEEPER
-  # -------------------------
+  # =========
+  # Airflow Webserver
+  # =========
+  airflow_air:
+    image: apache/airflow:2.9.1
+    container_name: airflow_air
+    depends_on:
+      postgres_air:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_air:5432/airflow
+      AIRFLOW__CORE__FERNET_KEY: "something_very_secret"
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "super_secret_key"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    command: webserver
+    ports:
+      - "8082:8080"
+
+  # =========
+  # Airflow Scheduler
+  # =========
+  airflow_scheduler:
+    image: apache/airflow:2.9.1
+    container_name: airflow_scheduler
+    depends_on:
+      postgres_air:
+        condition: service_healthy
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_air:5432/airflow
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    command: scheduler
+
+  # =========
+  # Zookeeper
+  # =========
   zookeeper_air:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper_air
-    restart: always
-    ports:
-      - "22181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "22181:2181"
 
-  # -------------------------
-  # KAFKA
-  # -------------------------
+  # =====
+  # Kafka
+  # =====
   kafka_air:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka_air
-    restart: always
-    ports:
-      - "29092:9092"
+    depends_on:
+      - zookeeper_air
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper_air:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_air:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    depends_on:
-      - zookeeper_air
-
-  # -------------------------
-  # AIRFLOW
-  # -------------------------
-  airflow:
-    image: apache/airflow:2.9.1
-    container_name: airflow_air
-    restart: always
     ports:
-      - "8082:8080"
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_air:5432/air_quality
-      AIRFLOW__WEBSERVER__WORKERS: 2
-      _PIP_ADDITIONAL_REQUIREMENTS: ""
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./requirements.txt:/requirements.txt
-    command: >
-      bash -c "
-      pip install -r /requirements.txt &&
-      airflow db init &&
-      airflow db upgrade &&
-      airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com || true &&
-      airflow scheduler & airflow webserver
-      "
-    depends_on:
-      postgres_air:
-        condition: service_healthy
+      - "29092:9092"
 
-  # -------------------------
-  # GRAFANA
-  # -------------------------
+  # =======
+  # Grafana
+  # =======
   grafana_air:
     image: grafana/grafana:10.2.0
     container_name: grafana_air
-    restart: always
     ports:
       - "3010:3000"
-    depends_on:
-      - postgres_air
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
-      - grafana_data_air:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/provisioning/dashboards:/var/lib/grafana/dashboards
+      - grafana_data:/var/lib/grafana
 
-# -------------------------
-# VOLUMES
-# -------------------------
+# =========
+# Volumes
+# =========
 volumes:
-  postgres_data_air:
-  grafana_data_air:
+  postgres_air_data:
+  grafana_data:
+
+AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
+
