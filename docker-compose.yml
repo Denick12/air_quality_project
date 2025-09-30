@@ -1,4 +1,3 @@
-
 version: "3.9"
 
 services:
@@ -10,7 +9,7 @@ services:
     container_name: postgres_air
     restart: always
     ports:
-      - "5433:5432"                       # expose Postgres locally on 5433
+      - "5433:5432"   # expose Postgres locally on 5433
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -71,7 +70,7 @@ services:
       _PIP_ADDITIONAL_REQUIREMENTS: ""
     volumes:
       - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/requirements.txt:/requirements.txt
+      - ./requirements.txt:/requirements.txt
     command: >
       bash -c "
       pip install -r /requirements.txt &&
