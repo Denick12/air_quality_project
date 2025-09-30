@@ -1,0 +1,108 @@
+
+version: "3.9"
+
+services:
+  # -------------------------
+  # POSTGRES
+  # -------------------------
+  postgres_air:
+    image: postgres:15
+    container_name: postgres_air
+    restart: always
+    ports:
+      - "5433:5432"                       # expose Postgres locally on 5433
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: air_quality
+    volumes:
+      - postgres_data_air:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d air_quality"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------
+  # ZOOKEEPER
+  # -------------------------
+  zookeeper_air:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper_air
+    restart: always
+    ports:
+      - "22181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  # -------------------------
+  # KAFKA
+  # -------------------------
+  kafka_air:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka_air
+    restart: always
+    ports:
+      - "29092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper_air:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_air:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper_air
+
+  # -------------------------
+  # AIRFLOW
+  # -------------------------
+  airflow:
+    image: apache/airflow:2.9.1
+    container_name: airflow_air
+    restart: always
+    ports:
+      - "8082:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_air:5432/air_quality
+      AIRFLOW__WEBSERVER__WORKERS: 2
+      _PIP_ADDITIONAL_REQUIREMENTS: ""
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/requirements.txt:/requirements.txt
+    command: >
+      bash -c "
+      pip install -r /requirements.txt &&
+      airflow db init &&
+      airflow db upgrade &&
+      airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com || true &&
+      airflow scheduler & airflow webserver
+      "
+    depends_on:
+      postgres_air:
+        condition: service_healthy
+
+  # -------------------------
+  # GRAFANA
+  # -------------------------
+  grafana_air:
+    image: grafana/grafana:10.2.0
+    container_name: grafana_air
+    restart: always
+    ports:
+      - "3010:3000"
+    depends_on:
+      - postgres_air
+    volumes:
+      - grafana_data_air:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/provisioning/dashboards:/var/lib/grafana/dashboards
+
+# -------------------------
+# VOLUMES
+# -------------------------
+volumes:
+  postgres_data_air:
+  grafana_data_air:
