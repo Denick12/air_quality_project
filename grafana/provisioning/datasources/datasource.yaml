@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: Postgres_AirQuality
+    type: postgres
+    access: proxy
+    url: postgres_air:5432
+    user: airflow
+    password: airflow
+    database: air_quality
+    isDefault: true
+    jsonData:
+      sslmode: "disable"
+      postgresVersion: 1200
+      timescaledb: false
